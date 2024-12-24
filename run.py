@@ -6,12 +6,14 @@ import re
 import os
 import shutil
 import logging
+from dotenv import load_dotenv
 
 from selenium import webdriver
 from selenium.webdriver.common.by import By
 from selenium.webdriver.common.keys import Keys
 from selenium.webdriver.common.action_chains import ActionChains
 
+import openai
 from prompts import SYSTEM_PROMPT, SYSTEM_PROMPT_TEXT_ONLY
 from openai import OpenAI
 from utils import get_web_element_rect, encode_image, extract_information, print_message,\
@@ -34,7 +36,17 @@ def setup_logger(folder_path):
 
 
 def driver_config(args):
-    options = webdriver.ChromeOptions()
+    # options = webdriver.ChromeOptions()
+    options = webdriver.FirefoxOptions()
+    options.binary_location = "/usr/bin/firefox"
+    # options.add_argument('--headless')  # Run in headless mode
+    options.add_argument('--no-sandbox')  # Bypass the sandbox for Chrome
+    # options.add_argument('--disable-dev-shm-usage')  # Use shared memory
+    # options.add_argument('--remote-debugging-port=9222')  # Enable remote debugging
+    # options.add_argument('--disable-extensions')  # Disable extensions
+    # options.add_argument('--disable-gpu')  # Disable GPU acceleration (optional)
+
+    # driver_task = webdriver.Chrome(options=options)
 
     if args.save_accessibility_tree:
         args.force_device_scale = True
@@ -46,12 +58,13 @@ def driver_config(args):
         options.add_argument(
             "--user-agent=Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36"
         )
-    options.add_experimental_option(
-        "prefs", {
-            "download.default_directory": args.download_dir,
-            "plugins.always_open_pdf_externally": True
-        }
-    )
+    # options.add_experimental_option(
+    #     "prefs", {
+    #         "download.default_directory": args.download_dir,
+    #         "plugins.always_open_pdf_externally": True
+    #     }
+    # )
+
     return options
 
 
@@ -230,13 +243,12 @@ def exec_action_scroll(info, web_eles, driver_task, args, obs_info):
             actions.key_down(Keys.ALT).send_keys(Keys.ARROW_UP).key_up(Keys.ALT).perform()
     time.sleep(3)
 
-
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('--test_file', type=str, default='data/test.json')
     parser.add_argument('--max_iter', type=int, default=5)
-    parser.add_argument("--api_key", default="key", type=str, help="YOUR_OPENAI_API_KEY")
-    parser.add_argument("--api_model", default="gpt-4-vision-preview", type=str, help="api model name")
+    parser.add_argument("--api_key", required=False, type=str, help="YOUR_OPENAI_API_KEY")
+    parser.add_argument("--api_model", default="gpt-4o", type=str, help="api model name")
     parser.add_argument("--output_dir", type=str, default='results')
     parser.add_argument("--seed", type=int, default=None)
     parser.add_argument("--max_attached_imgs", type=int, default=1)
@@ -253,8 +265,11 @@ def main():
 
     args = parser.parse_args()
 
+    # Load environment variables from .env file
+    load_dotenv()
     # OpenAI client
-    client = OpenAI(api_key=args.api_key)
+    # print(f'API KEY LOADED : {os.getenv("OPENAI_API_KEY")}')
+    client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
     options = driver_config(args)
 
@@ -277,7 +292,7 @@ def main():
         setup_logger(task_dir)
         logging.info(f'########## TASK{task["id"]} ##########')
 
-        driver_task = webdriver.Chrome(options=options)
+        driver_task = webdriver.Firefox(options=options )
 
         # About window size, 765 tokens
         # You can resize to height = 512 by yourself (255 tokens, Maybe bad performance)

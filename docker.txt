@@ -1,0 +1,19 @@
+FROM python:3.10-slim
+
+# Install required dependencies
+RUN apt-get update && apt-get install -y \
+    wget \
+    curl \
+    unzip \
+    chromium-driver \
+    && apt-get clean
+
+# Copy project files
+WORKDIR /app
+COPY . /app
+
+# Install Python dependencies
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Default command
+CMD ["python", "run.py", "--test_file", "./data/tasks_test.jsonl", "--api_key", "YOUR_OPENAI_API_KEY", "--headless", "--max_iter", "15", "--max_attached_imgs", "3", "--temperature", "1", "--fix_box_color", "--seed", "42"]
